@@ -3,7 +3,6 @@ package main
 import (
     "fmt"
     "os/exec"
-	"net/http"
 )
 
 func main() {
@@ -23,3 +22,4 @@ func main() {
     }
     fmt.Println(string(output1))
 }
+
