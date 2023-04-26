@@ -1,1 +1,2 @@
-python main.py --dont-upcast-attention
+#!/bin/bash
+python main.py & --dont-upcast-attention
