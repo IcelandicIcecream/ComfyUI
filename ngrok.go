@@ -21,6 +21,8 @@ func usage(bin string) {
 }
 
 func main() {
+    log.SetOutput(os.Stdout)
+    
 	if len(os.Args) != 2 {
 		usage(os.Args[0])
 	}
