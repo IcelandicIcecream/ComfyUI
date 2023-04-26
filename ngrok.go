@@ -1,36 +1,76 @@
-package ngrok
+// Naïve ngrok agent implementation.
+// Sets up a single tunnel and forwards it to another service.
 
-import(
-    "context"
-    "log"
-    "net/http"
-    
-    "golang.ngrok.com/ngrok"
-    "golang.ngrok.com/ngrok/config"
+package main
+
+import (
+	"context"
+	"io"
+	"log"
+	"net"
+	"os"
+
+	"golang.org/x/sync/errgroup"
+
+	"golang.ngrok.com/ngrok"
+	"golang.ngrok.com/ngrok/config"
 )
 
-func ngrok() {
-    
-    if err:= run(context.Background()); err != nil {
-        log.Fatal(err)
-    }
-
+func usage(bin string) {
+	log.Fatalf("Usage: %s <address:port>", bin)
 }
 
-func run(ctx context.Context) error {
-    tun, err := ngrok.Listen(ctx,
-        config.HTTPEndpoint(),
-        ngrok.WithAuthtokenFromEnv(),
-    )
-    if err != nil {
-        return err
-    }
-    
-    log.Println("tunnel created:", tun.URL())
-    
-    return http.Serve(tun, http.HandlerFunc(handler))
+func main() {
+	if len(os.Args) != 2 {
+		usage(os.Args[0])
+	}
+	if err := run(context.Background(), os.Args[1]); err != nil {
+		log.Fatal(err)
+	}
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-    fmt.Fprintln(w, "<h1>Hello from ngrok-go.</h1>")
+func run(ctx context.Context, dest string) error {
+	tun, err := ngrok.Listen(ctx,
+		config.HTTPEndpoint(),
+		ngrok.WithAuthtokenFromEnv(),
+	)
+	if err != nil {
+		return err
+	}
+
+	log.Println("tunnel created:", tun.URL())
+
+	for {
+		conn, err := tun.Accept()
+		if err != nil {
+			return err
+		}
+
+		log.Println("accepted connection from", conn.RemoteAddr())
+
+		go func() {
+			err := handleConn(ctx, dest, conn)
+			log.Println("connection closed:", err)
+		}()
+	}
+}
+
+func handleConn(ctx context.Context, dest string, conn net.Conn) error {
+	next, err := net.Dial("tcp", dest)
+	if err != nil {
+		return err
+	}
+
+	g, _ := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		_, err := io.Copy(next, conn)
+		return err
+	})
+	g.Go(func() error {
+		_, err := io.Copy(conn, next)
+		return err
+	})
+
+	return g.Wait()
 }
