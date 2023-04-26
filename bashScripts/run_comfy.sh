@@ -1,2 +1,2 @@
 #!/bin/bash
-python main.py & --dont-upcast-attention
+python main.py & --dont-upcast-attention -log=stdout
