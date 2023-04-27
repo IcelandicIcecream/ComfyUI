@@ -26,6 +26,7 @@ func runScript(scriptPath string, out chan<- string, errChan chan<- error) {
 func main() {
 	// check if dependencies have been installed before
 	if _, err := os.Stat(dependenciesFlag); os.IsNotExist(err) {
+        fmt.Println("Installing requirements.txt")
 		// install dependencies
 		cmd := exec.Command("bash", "bashScripts/install_dependencies.sh")
 		output, err := cmd.Output()
@@ -42,7 +43,9 @@ func main() {
 			return
 		}
 		f.Close()
-	}
+    } else {
+        fmt.Println("dependencies have already been installed")
+    }
 
 	// Run ComfyUI and Port forward with ngrok concurrently
 	out1 := make(chan string, 1)
